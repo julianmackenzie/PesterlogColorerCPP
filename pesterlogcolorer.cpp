@@ -6,17 +6,41 @@
 
 using namespace std;
 
-
+//
 // Menu prompt displayed on each input loop
+//
 void displayBroadMenu() {
     cout << endl << endl << "-- Main Menu --" << endl << endl
     << "p. Process pesterlog" << endl << "h. Pesterlog formatting help" << endl << "x. Quit" << endl << endl
     << "> User: Make a choice ==> ";
 }
 
+//
+// Abstracted file opening for user input file
+//
+void openInputFile(ifstream &infile, string &filename, string &filepath) {
+    cout << "Choose input file (should be placed in \"unformatted\" folder) ==> ";
+    cin >> filename;  // get name of user file
+
+    filepath = "unformatted/" + filename;  // prepend the input directory to name of file
+
+    infile.open(filepath);  // attempt to open specified file
+
+    while (!infile.good()) {  // if file failed to open
+        cout << endl << "ERROR: file does not exist, isn't in the right directory, or its name was inputted incorrectly. Please try again." << endl
+        << "Choose input file (should be placed in \"unformatted\" folder) ==> ";
+
+        cin >> filename;  // try inputting again
+        filepath = "unformatted/" + filename;  // prepend the input directory to name of file
+        infile.open(filepath);
+    }
+
+}
 
 
-
+//
+// Command loop for adding user handles and corresponding hex color codes to a map
+//
 void inputCharacters(map<string, string> &charData) {
 string cmd = "y";
 
@@ -49,30 +73,39 @@ string cmd = "y";
 }
 
 
+//
+// Abstrated file opening for output file
+//
+void openOutputFile(ofstream &outfile, string filename) {
+    string ofilepath = "formatted/formatted_" + filename;  // prepend the output directory to name of file
+    outfile.open(ofilepath);
+}
+
+//
+// Main logic function, reads file line by line and applies rules based on data from charData map
+//
+void processFile(ifstream &infile, ofstream &outfile, map<string, string> charData) {
+    string line;
+    while (getline(infile, line)) {
+        outfile << line << endl;  // Placeholder to ensure basic file output works
+    }
+
+}
 
 
 void startFileProcessing() {
 
 
     cout << endl << endl << endl << endl << endl << endl << "-- PESTERLOG PROCESSING --" << endl << endl;
+
+    ifstream infile;  // input stream from log file, opened in openInputFile() below
     
-    cout << "Choose input file (should be placed in \"unformatted\" folder) ==> ";
-    string filename;
-    cin >> filename;
+    string filename;  // name of input file, specified in openInputFile() below
+    string filepath;  // full path of input file, specified in openInputFile() below
 
-    filename = "unformatted/" + filename;  // prepend the input directory to name of file
 
-    ifstream infile;  // input stream from log file
-    infile.open(filename);
+    openInputFile(infile, filename, filepath);  // prompt user and open specified file
 
-    while (!infile.good()) {  // if file failed to open
-        cout << endl << "ERROR: file does not exist, isn't in the right directory, or its name was inputted incorrectly. Please try again." << endl
-        << "Choose input file (should be placed in \"unformatted\" folder) ==> ";
-
-        cin >> filename;  // try inputting again
-        filename = "unformatted/" + filename;  // prepend the input directory to name of file
-        infile.open(filename);
-    }
 
     cout << endl << "Successfully opened log file!" << endl << endl << endl << "-- Chumhandle setup -- " << endl;  // Success message!
 
@@ -111,6 +144,18 @@ void startFileProcessing() {
 
     // TODO: Processing!!
 
+    ofstream outfile;  // output filestream
+
+    openOutputFile(outfile, filename);  // open new file or overwrite existing file in /formatted dir for writing
+
+    processFile(infile, outfile, charData);
+
+
+
+    
+
+
+
     
 
     
@@ -124,6 +169,7 @@ void startFileProcessing() {
 
 
     infile.close();
+    outfile.close();
     
 
 
