@@ -1,10 +1,33 @@
+
+
+//
+// This program was written in less than 24 hours by Julian Mackenzie, or "Jug", for the MSPFA and Homestuck community.
+//
+// The purpose of this program is to format a .txt file containing a "Pesterlog" in proper format.
+// This format is detailed in the program in a formatting help menu option.
+//
+// To learn what a Pesterlog is, visit https://www.homestuck.com to read the webcomic that inspired this whole project.
+//
+// You can find this project hosted at https://github.com/julianmackenzie/PesterlogColorer
+//
+// This project is open source. Feel free to modify anything and everything, but please do cite Julian Mackenzie as the creator and link back to the original repo!
+//
+
+
+
+
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cctype>
+#include <algorithm>
 #include <map>
 
 
 using namespace std;
+
+
+
 
 //
 // Menu prompt displayed on each input loop
@@ -13,7 +36,11 @@ void displayBroadMenu() {
     cout << endl << endl << "-- Main Menu --" << endl << endl
     << "p. Process pesterlog" << endl << "h. Pesterlog formatting help" << endl << "x. Quit" << endl << endl
     << "> User: Make a choice ==> ";
+
+    return;
 }
+
+
 
 //
 // Abstracted file opening for user input file
@@ -35,7 +62,11 @@ void openInputFile(ifstream &infile, string &filename, string &filepath) {
         infile.open(filepath);
     }
 
+    return;
+
 }
+
+
 
 
 //
@@ -54,15 +85,32 @@ string cmd = "y";
         cin >> handle;  // input two-letter handle
 
         if (charData.count(handle)) {  // if handle is a duplicate, avoid overwriting
-            cout << endl << endl << "ERROR: Unfortunately, this program cannot process logs with duplicate handles. You'll need to do this one on your own.";
-        } else {
-            cout << endl << "Specify text color hex value for " + handle + " starting with # (i.e. #AF59FF) ==> ";
+            cout << endl << endl << "ERROR: Unfortunately, this program cannot process logs with duplicate handles." << endl
+            << "You'll need to do this one on your own or replace their abbreviation with a unique placeholder, then change it back after processing.";
+        }
+        
+        else if (handle.length() != 2 || !isupper(handle[0]) || !isupper(handle[1])) {  // enforce XX format for chumhandle abbreviations
+            cout << endl << endl << "ERROR: Your handle abbreviation must be two capital letters.";
+        }
+        
+        else {
+            cout << endl << "Specify text color hex value for " + handle + " without the # (i.e. AF59FF) ==> #";
 
             cin >> color;  // input hex color value
+            
 
-            charData.insert(pair<string, string>(handle, color));  // Add handle and text color to character data map
+            if (std::all_of(color.begin(), color.end(), ::isxdigit) && color.length() == 6) {  // all_of bit used from https://stackoverflow.com/questions/8899069/how-to-find-if-a-given-string-conforms-to-hex-notation-eg-0x34ff-without-regex
+                color = "#" + color;
 
-            cout << endl << endl << "Added character " << handle << " with text color " << charData[handle] << ".";
+                charData.insert(pair<string, string>(handle, color));  // Add handle and text color to character data map
+
+                cout << endl << endl << "Added character " << handle << " with text color " << charData[handle] << ".";
+            }
+
+            else {
+                cout << endl << endl << "ERROR: Your color code is not a proper hex color value. It must be six characters long and only contain 0-9, a-f, and A-F.";
+            }
+
         }
 
         
@@ -70,11 +118,46 @@ string cmd = "y";
 
         cin >> cmd;  // ask user if they want to add another character
     }
+
+    return;
+
 }
 
 
+
+
 //
-// Abstrated file opening for output file
+// Prints the data in the charData map and asks user to confirm that they wish to process their file with that data
+//
+int outputCharacters(map<string, string> &charData, ifstream &infile) {
+    cout << endl << endl << endl << "Please review the character data:" << endl << endl;
+
+
+    for (auto const& p : charData) {  // Iterate through the map and print character data
+        cout << "Chumhandle abbreviation: " << p.first << "  Text color: " << p.second << endl;
+    }
+
+
+    cout << endl << "Check that chumhandles are two capitalized letters and colors are in hex format (#xxxxxx)" << endl
+    << "Is all of the data correct? If not, or if you wish to cancel processing, you will be returned to the main menu. (y/n) ==> ";
+
+
+    string cmd = "";
+    cin >> cmd;
+
+    if (cmd != "y" && cmd != "Y") {  // Let user cancel if data is incorrect
+        cout << endl << endl << "Pesterlog processing cancelled." << endl;
+        infile.close();
+        return 1;  // user chooses to cancel
+    }
+
+    return 0;  // user chooses to proceed
+}
+
+
+
+//
+// Abstracted file opening for output file
 //
 void openOutputFile(ofstream &outfile, string filename) {
     string ofilepath = "formatted/formatted_" + filename;  // prepend the output directory to name of file
@@ -86,15 +169,45 @@ void openOutputFile(ofstream &outfile, string filename) {
 //
 void processFile(ifstream &infile, ofstream &outfile, map<string, string> charData) {
     string line;
-    while (getline(infile, line)) {
-        outfile << line << endl;  // Placeholder to ensure basic file output works
+
+    outfile << "[spoiler open=\"Show Pesterlog\" close=\"Hide Pesterlog\"]" << endl;
+
+    while (getline(infile, line)) {  // for each line in the input file
+
+        string linekey = line.substr(0,2);  // check first two characters of line
+
+        if (charData.count(linekey)) {  // if charData contains the linekey (linekey is a chumhandle abbreviation)
+            line = "[color=" + charData[linekey] + "]" + line + "[/color]";  // add corresponding color code
+        } else if (linekey == "--") {  // if line is a header or footer
+            for (auto const& p : charData) {  // iterate through the charData array to search for each abbreviation in the line
+                
+                string headerAbbrev = "[" + p.first + "]";  // format of abbreviation to look for
+                
+                int abbrevIndex = line.find(headerAbbrev);  // search for the abbreviation and its enclosing brackets
+
+                if (abbrevIndex != -1) {  // if abbreviation is found
+                    line.insert(abbrevIndex + 4, "[/color]");  // add closing color tag to end of abbreviation
+                    string colorCode = "[color=" + p.second + "]";
+                    line.insert(abbrevIndex, colorCode);  // add opening color tag to beginning of abbreviation
+                }
+            }
+        } 
+
+
+        outfile << line << endl;  // commit all changes to output file
     }
+    outfile << "[/spoiler]";
+    
+    return;
 
 }
 
 
-void startFileProcessing() {
 
+//
+// Makes calls to functions needed to process through an input file.
+//
+void startFileProcessing() {
 
     cout << endl << endl << endl << endl << endl << endl << "-- PESTERLOG PROCESSING --" << endl << endl;
 
@@ -106,74 +219,46 @@ void startFileProcessing() {
 
     openInputFile(infile, filename, filepath);  // prompt user and open specified file
 
-
     cout << endl << "Successfully opened log file!" << endl << endl << endl << "-- Chumhandle setup -- " << endl;  // Success message!
 
 
     map<string, string> charData;  // will be used to store all character handles and colors
 
-
     inputCharacters(charData);  // take user input and add to map
 
 
-
-    cout << endl << endl << endl << "Please review the character data:" << endl << endl;
-
-
-    for (auto const& p : charData) {  // Iterate through the map and print character data
-        cout << "Chumhandle abbreviation: " << p.first << "  Text color: " << p.second << endl;
-    }
-
-
-    cout << endl << "Check that chumhandles are two capitalized letters and colors are in hex format (#xxxxxx)" << endl
-    << "Is all of the data correct? If not, you will be returned to the main menu. (y/n) ==> ";
-
-
-    string cmd = "";
-    cin >> cmd;
-
-    if (cmd != "y" && cmd != "Y") {  // Let user cancel if data is incorrect
-        cout << endl << endl << "Pesterlog processing cancelled." << endl;
-        infile.close();
+    // Print all data and give user option to cancel
+    if (outputCharacters(charData, infile) == 1) {
         return;
     }
 
 
-    cout << endl << endl << endl << "Jesse, we need to process." << endl;
+    // PROCESSING
+    cout << endl << endl << endl << endl << endl << endl << "Preparing to process " << filename << "..." << endl;
 
-
-    // TODO: Processing!!
 
     ofstream outfile;  // output filestream
 
     openOutputFile(outfile, filename);  // open new file or overwrite existing file in /formatted dir for writing
 
-    processFile(infile, outfile, charData);
+    cout << endl << "Output file opened..." << endl;
 
 
+    processFile(infile, outfile, charData);  // apply logic line by line to edit the file
 
-    
-
-
-
-    
-
-    
+    cout << endl << "Pesterlog modification was successful! The modified copy is available in the \"formatted\" folder." << endl << endl << endl;  // file processing success message
 
 
-
-
-
-
-
-
-
+    // Close filestreams
     infile.close();
     outfile.close();
-    
 
 
+    cout << "Input literally anything to return to the menu. Anything you want. I won't tell.\n==> ";
+    string nothingBurger;  // Dummy variable to create the illusion of a system("PAUSE") call without the archaic repercussions of actually doing that
+    cin >> nothingBurger;
 
+    return;
 }
 
 
@@ -193,13 +278,16 @@ void displayFormatHelp() {
     << "More importantly, XX and YY are the shortened chumhandles, the first letter of each word in the chumhandle capitalized." << endl
     << "For example, if your chumhandle was turntechGodhead, you would put TG in place of XX." << endl << endl
     << "The actual header and footer can technically contain anything as long as [XX] and [YY] are present (the [] is what is checked for)\nand as long as they begin and end with a \"--\"." << endl
-    << "Each line of dialog needs to begin with XX or YY, and XX and YY must be different (which sucks, but that's how it goes)." << endl << endl << endl;
+    << "Each line of dialog needs to begin with XX or YY, and XX and YY must be different." << endl
+    << "If two characters have the same abbreviation, choose one and replace all instances of theirs with a unique placeholder, then change it back after processing." << endl << endl << endl;
 
     cout << "Input literally anything to return to the menu. Anything you want. I won't tell.\n==> ";
     string nothingBurger;  // Dummy variable to create the illusion of a system("PAUSE") call without the archaic repercussions of actually doing that
     cin >> nothingBurger;
 
     cout << endl << endl << endl;
+
+    return;
 }
 
 
@@ -207,17 +295,22 @@ void displayFormatHelp() {
 
 // Handles the main command loop
 void mainCmdLoop(string cmd) {
+
+
+
     while (cmd != "x") {  // While user does not wish to quit
         if (cmd == "p") startFileProcessing();
         else if (cmd == "h") displayFormatHelp();
-        
-
-        
+        else if (cmd == "");  // for the first loop
+        else cout << endl << "That was an invalid command. Nice try, pooplord!" << endl;
 
 
         displayBroadMenu();  // Display menu to user
         cin >> cmd;  // Take input from user
     }
+
+    return;
+
 }
 
 
@@ -225,21 +318,18 @@ void mainCmdLoop(string cmd) {
 int main()
 {
 
-    // Opening monologue (very interesting/important)
+    // Opening monologue (very interesting/important. very.)
     cout << endl << endl << endl << "Welcome to Jug's Chumhandle-to-Text-Color interface!" << endl << endl
     << "This program was written to process pesterlog .txt files (in proper pesterlog format) for use on https://mspfa.com" << endl << endl
     << "If you don't know what a pesterlog is, visit https://www.homestuck.com and offer a blood sacrifice to the shittest fandom on Earth!" << endl
     << "If you don't know how to format a pesterlog, select the \"Pesterlog formatting help\" option when prompted." << endl;
 
 
-    
-    displayBroadMenu();  // Initial menu display
-    
     string cmd = "";  // Will be used to process user input
-    cin >> cmd;  // Take first input from user
-
     mainCmdLoop(cmd);
 
+
+    // Epilogue
     cout << endl << endl << "Thank you for using Jug's Chumhandle-to-Text-Color interface!" << endl
     << "Check out the VirtualVexed webcomic on https://mspfa.com!" << endl << endl << endl;
 
