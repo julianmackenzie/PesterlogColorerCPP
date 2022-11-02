@@ -1,4 +1,7 @@
 # PesterlogColorer
+
+Currently working on porting to Java because getting it to run on other machines without the user needing to fully install gcc is difficult.
+
 A command line program written in C++ to add color formats to pesterlogs for mspfa.com
 
 This is a command line program written in less than 24 hours, on very little sleep, college budget taco salad, and two pints of iced sweet tea. I am wiped.
