@@ -1,6 +1,6 @@
 # PesterlogColorer
 
-Currently working on porting to Java because getting it to run on other machines without the user needing to fully install g++ is difficult.
+This project was ported to React because getting it to run on other machines without the user needing to fully install g++ is difficult.
 For the time being, this will only work if you have used MinGW to get dlls for g++ and set it to your Path environmental variable.
 
 A command line program written in C++ to add color formats to pesterlogs for mspfa.com
